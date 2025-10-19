@@ -1,0 +1,39 @@
+# Cabal build artifacts
+dist/
+dist-newstyle/
+cabal-dev/
+.cabal-sandbox/
+cabal.sandbox.config
+*.o
+*.hi
+*.chi
+*.chs.h
+*.dyn_o
+*.dyn_hi
+.hpc
+.hsenv
+.htf/
+.ghc.environment.*
+
+# Stack build artifacts
+.stack-work/
+stack.yaml.lock
+
+# GHC
+*.prof
+*.aux
+*.hp
+*.eventlog
+
+# IDE/Editor files
+.idea/
+*.swp
+*.swo
+*~
+.history/
+TAGS
+tags
+
+# OS files
+.DS_Store
+Thumbs.db

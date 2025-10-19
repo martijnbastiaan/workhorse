@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build and Test - GHC ${{ matrix.ghc }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ghc:
+          - "8.10"
+          - "9.0"
+          - "9.2"
+          - "9.4"
+          - "9.6"
+          - "9.8"
+          - "9.10"
+          - "9.12"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Haskell
+        uses: haskell-actions/setup@v2
+        id: setup
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: 'latest'
+
+      - name: Configure
+        run: |
+          cabal configure --enable-tests --test-show-details=streaming
+          cabal build --dry-run
+
+      - name: Restore cache
+        uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: ${{ steps.setup.outputs.cabal-store }}
+          key: ${{ runner.os }}-ghc-${{ steps.setup.outputs.ghc-version }}-cabal-${{ steps.setup.outputs.cabal-version }}-plan-${{ hashFiles('**/plan.json') }}
+          restore-keys: |
+            ${{ runner.os }}-ghc-${{ steps.setup.outputs.ghc-version }}-cabal-${{ steps.setup.outputs.cabal-version }}-
+
+      - name: Install dependencies
+        run: cabal build all --only-dependencies
+
+      - name: Save cache
+        uses: actions/cache/save@v4
+        if: ${{ always() && steps.cache.outputs.cache-hit != 'true' }}
+        with:
+          path: ${{ steps.setup.outputs.cabal-store }}
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+
+      - name: Build
+        run: cabal build all
+
+      - name: Test
+        run: cabal test all
+
+  formatting:
+    name: Formatting Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for trailing whitespace
+        run: |
+          if grep -r -n --include=\*.hs --include=\*.cabal '[[:blank:]]$' .; then
+            echo "Error: Found trailing whitespace in the files above"
+            exit 1
+          fi
+
+      - name: Check for newline at end of file
+        run: |
+          exit_code=0
+          for file in $(find . -name '*.hs' -o -name '*.cabal'); do
+            if [ -n "$(tail -c 1 "$file")" ]; then
+              echo "Error: $file does not end with a newline"
+              exit_code=1
+            fi
+          done
+          exit $exit_code
+
+      - name: Install fourmolu
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSL --output "${HOME}/.local/bin/fourmolu" https://github.com/fourmolu/fourmolu/releases/download/v0.19.0.1/fourmolu-0.19.0.1-linux-x86_64
+          chmod +x "${HOME}/.local/bin/fourmolu"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+
+      - name: Check Haskell formatting with fourmolu
+        run: |
+          fourmolu --mode check $(git ls-files *.hs)
+
+      - name: Install cabal-gild
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSL https://github.com/tfausak/cabal-gild/releases/download/1.6.0.2/cabal-gild-1.6.0.2-linux-x64.tar.gz | tar -xz -C "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Check cabal file formatting with cabal-gild
+        run: |
+          cabal-gild --mode check --input workhorse.cabal

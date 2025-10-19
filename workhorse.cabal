@@ -1,0 +1,58 @@
+cabal-version: 3.4
+name: workhorse
+version: 0.1.0.0
+synopsis: Simple queue-based worker pool where jobs can add more jobs
+description:
+  Workhorse is a Haskell library that provides a simple way to manage a pool
+  of worker threads that can process tasks concurrently. It allows tasks to
+  dynamically add more tasks to the pool, making it suitable for workloads
+  with unpredictable or recursive task generation.
+
+  For a simple IO based API, see "Control.Concurrent.Workhorse". For a lifted
+  version, see "Control.Concurrent.Workhorse.Lifted".
+
+license: BSD-2-Clause
+license-file: LICENSE
+author: Martijn Bastiaan
+maintainer: martijn@hmbastiaan.nl
+copyright: 2025 Martijn Bastiaan <martijn@hmbastiaan.nl>
+category: Concurrency
+build-type: Simple
+
+common warnings
+  ghc-options: -Wall
+
+library
+  import: warnings
+  exposed-modules:
+    Control.Concurrent.Workhorse
+    Control.Concurrent.Workhorse.Internal
+    Control.Concurrent.Workhorse.Lifted
+
+  build-depends:
+    base >=4.14,
+    data-default,
+    lifted-async,
+    monad-control,
+    transformers,
+
+  hs-source-dirs: src
+  default-language: Haskell2010
+
+test-suite workhorse-tests
+  import: warnings
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  hs-source-dirs: test
+  ghc-options:
+    -threaded
+    -with-rtsopts=-N
+
+  build-depends:
+    base >=4.14,
+    tasty,
+    tasty-hunit,
+    time,
+    workhorse,
+
+  default-language: Haskell2010
